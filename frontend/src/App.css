@@ -160,17 +160,3 @@ body {
   width: 0.5px;
   background: #E0E0E0;
 }
-
-.back-btn {
-  background: none;
-  border: none;
-  color: #D4537E;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
-}
-
-.back-btn:hover {
-  opacity: 0.7;
-}

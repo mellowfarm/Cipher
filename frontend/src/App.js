@@ -1,14 +1,11 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import UploadScreen from './UploadScreen';
-import ResultsScreen from './ResultsScreen';
 import './App.css';
 
-function LandingScreen() {
-  const navigate = useNavigate();
-
+function App() {
   return (
     <div className="app">
       <div className="card">
+
+        {/* Logo */}
         <div className="logo-container">
           <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
             <rect x="2" y="30" width="7" height="14" rx="2" fill="#C8E6C9"/>
@@ -23,17 +20,28 @@ function LandingScreen() {
           </svg>
         </div>
 
+        {/* Label */}
         <p className="label">CIPHER · BEHAVIOURAL FINANCE</p>
-        <h1 className="headline">Decode your<br/>spending<br/>psychology.</h1>
-        <p className="tagline">Upload your transactions and discover what your spending reveals about you — grounded in real science, not a quiz.</p>
 
+        {/* Headline */}
+        <h1 className="headline">
+          Decode your<br/>spending<br/>psychology.
+        </h1>
+
+        {/* Tagline */}
+        <p className="tagline">
+          Upload your transactions and discover what your spending reveals about you — grounded in real science, not a quiz.
+        </p>
+
+        {/* Buttons */}
         <div className="buttons">
-          <button className="btn-pink" onClick={() => navigate('/upload?mode=csv')}>Upload bank CSV</button>
-          <button className="btn-green" onClick={() => navigate('/upload?mode=manual')}>Add transactions manually</button>
+          <button className="btn-pink">Upload bank CSV</button>
+          <button className="btn-green">Add transactions manually</button>
         </div>
 
-        <p className="demo-link">or <span onClick={() => navigate('/results')}>try a demo →</span></p>
+        <p className="demo-link">or <span>try a demo →</span></p>
 
+        {/* Stats */}
         <div className="divider" />
         <div className="stats">
           <div className="stat">
@@ -51,20 +59,9 @@ function LandingScreen() {
             <p className="stat-label">built for Singapore</p>
           </div>
         </div>
+
       </div>
     </div>
-  );
-}
-
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingScreen />} />
-        <Route path="/upload" element={<UploadScreen />} />
-        <Route path="/results" element={<ResultsScreen />} />
-      </Routes>
-    </BrowserRouter>
   );
 }
 
