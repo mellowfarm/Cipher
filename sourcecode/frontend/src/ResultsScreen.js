@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Chart, registerables } from 'chart.js';
 import './App.css';
 
@@ -7,23 +7,26 @@ Chart.register(...registerables);
 
 function ResultsScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const results = location.state;     
   const chartRef = useRef(null);
   const canvasRef = useRef(null);
 
   // ── hardcoded mock data (will come from backend later) ──
-  const archetype = "The Comfort Seeker";
-  const portrait = "You spend to feel better. Your transactions reveal a pattern of emotional regulation — food and entertainment spike when stress is high, especially late at night. Your wallet is doing emotional work your mind hasn't processed yet.";
-  const metrics = [
+  // results?.xx ?? means "if results exists, use results.xx, otherwise use the default value after ??"
+  const archetype = results?.archetype ?? "The Comfort Seeker";
+  const portrait = results?.portrait ?? "You spend to feel better. Your transactions reveal a pattern of emotional regulation — food and entertainment spike when stress is high, especially late at night. Your wallet is doing emotional work your mind hasn't processed yet.";
+  const metrics = results?.metrics ?? [
     { value: "73", label: "present bias", color: "#D4537E" },
     { value: "$1,847", label: "total analysed", color: "#2E7D32" },
     { value: "31%", label: "late night spend", color: "#D4537E" },
   ];
-  const insights = [
+  const insights = results?.insights ?? [
     { color: "#D4537E", label: "Late night spending", text: "31% of your transactions happen after 10pm, averaging 40% above your normal transaction size." },
     { color: "#2E7D32", label: "Social spend clusters", text: "Your food spending peaks on Fridays and weekends, suggesting you spend more with others around." },
     { color: "#ED93B1", label: "Subscription creep", text: "You have 6 active subscriptions totalling $87/month. 2 show no adjacent usage signals." },
   ];
-  const chartData = {
+  const chartData = results?.chartData ?? {
     labels: ['Food', 'Shopping', 'Transport', 'Entertainment', 'Others'],
     values: [701, 406, 332, 258, 150],
     colors: ['#D4537E', '#81C784', '#2E7D32', '#ED93B1', '#C8E6C9'],

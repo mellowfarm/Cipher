@@ -12,6 +12,8 @@ function UploadScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // state for CSV upload
   const [file, setFile] = useState(null);
@@ -30,6 +32,33 @@ function UploadScreen() {
 
   function handleFileChange(e) {
     setFile(e.target.files[0]);
+  }
+
+  async function handleAnalyse() {
+    setLoading(true); // show spinner 
+    setError(null);
+
+    // fetch sends a request to that URL
+    try {
+      const response = await fetch('http://localhost:8000/analyse', {
+        method: 'POST', // we're sending data, not just requesting it
+        headers: { 'Content-Type': 'application/json' }, // tells FastAPI we're sending JSON
+        body: JSON.stringify({ transactions }) // converts our JavaScript transactions array into a JSON string to send over the network
+      });
+  
+      if (!response.ok) {
+        throw new Error('Server error — please try again');
+      }
+      
+      // await: tells JavaScript "pause here and wait for this to finish before moving on." -> needs to be in async fxn to work
+      const data = await response.json(); // converts FastAPI's response back from JSON into a JavaScript object we can use
+      navigate('/results', { state: data });
+  
+    } catch (err) {
+      setError('Could not connect to server. Make sure the backend is running.');
+    } finally {
+      setLoading(false); // hide spinner 
+    }
   }
 
   return (
@@ -69,11 +98,11 @@ function UploadScreen() {
 
             <button
               className="btn-pink"
-              disabled={!file}
+              disabled={!file || loading}
               style={{ opacity: file ? 1 : 0.4, width: '100%' }}
-              onClick={() => navigate('/results')}
+              onClick={handleAnalyse}
             >
-              Analyse my spending →
+              {loading ? 'Analysing...' : 'Analyse my spending →'}
             </button>
           </div>
 
@@ -141,13 +170,14 @@ function UploadScreen() {
               </div>
             )}
 
+            {error && <p className="error-msg">{error}</p>}
             <button
               className="btn-pink"
-              disabled={transactions.length < 10}
+              disabled={transactions.length < 10 || loading}
               style={{ opacity: transactions.length >= 10 ? 1 : 0.4, width: '100%', marginTop: '16px' }}
-              onClick={() => navigate('/results')}
+              onClick={handleAnalyse}
             >
-              Analyse my spending →
+              {loading ? 'Analysing...' : 'Analyse my spending →'}
             </button>
           </div>
         )}
