@@ -138,9 +138,11 @@ function UploadScreen() {
                   <option>Food</option>
                   <option>Transport</option>
                   <option>Shopping</option>
+                  <option>Groceries</option>
                   <option>Entertainment</option>
                   <option>Health</option>
                   <option>Subscriptions</option>
+                  <option>Utilities</option>
                   <option>Others</option>
                 </select>
               </div>
@@ -159,13 +161,21 @@ function UploadScreen() {
             {transactions.length > 0 && (
               <div className="tx-list">
                 {transactions.map((tx, index) => (
-                  <div key={index} className="tx-item">
-                    <div>
-                      <p className="tx-desc">{tx.description}</p>
-                      <p className="tx-cat">{tx.category}</p>
+                    <div key={index} className="tx-item">
+                        <div>
+                        <p className="tx-desc">{tx.description}</p>
+                        <p className="tx-cat">{tx.category}</p>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <p className="tx-amount">${tx.amount.toFixed(2)}</p>
+                        <button
+                            onClick={() => setTransactions(transactions.filter((_, i) => i !== index))}
+                            style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', fontSize: '16px', padding: '0' }}
+                        >
+                            ×
+                        </button>
+                        </div>
                     </div>
-                    <p className="tx-amount">${tx.amount.toFixed(2)}</p>
-                  </div>
                 ))}
               </div>
             )}

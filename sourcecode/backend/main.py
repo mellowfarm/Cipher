@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
+from categoriser import categorise_transactions
 
 app = FastAPI() # creates FastAPI server 
 
@@ -31,9 +32,38 @@ def health():
     return { "status": "ok" }
 
 # ── main analyse endpoint ──
-#when React sends transactions to POST /analyse, this function runs and returns the mock results
+# when React sends transactions to POST /analyse, this function runs and returns the mock results
 @app.post("/analyse")
 def analyse(request: AnalyseRequest):
+    # categorise the transactions
+    transactions_list = [t.dict() for t in request.transactions]
+    categorised = categorise_transactions(transactions_list)
+
+    # count spending by category
+    # cat = category name
+    category_totals = {}
+    for tx in categorised:
+        cat = tx["predicted_category"]
+        category_totals[cat] = category_totals.get(cat, 0) + tx["amount"] #.get(cat, 0) returns current total for category or 0 if not exists
+
+    # sort by amount
+    sorted_categories = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)
+    # category_totals.items() returns list of (category, total) pairs, sorted by total in descending order
+    # key = lambda x: x[1] tells sorted() to sort by the second element of the pair (the total amount)
+    # reverse=True sorts in descending order so highest spending categories come first
+    top_categories = sorted_categories[:5] # takes only the first 5 items 
+
+    # build chart data from real transactions
+    chart_colors = ["#D4537E", "#81C784", "#2E7D32", "#ED93B1", "#C8E6C9"]
+    chart_data = {
+        "labels": [c[0] for c in top_categories],
+        "values": [round(c[1], 2) for c in top_categories],
+        "colors": chart_colors[:len(top_categories)]
+    }
+
+    # total spent
+    total_spent = sum(tx["amount"] for tx in categorised)
+    
     # hardcoded mock response for now
     # real ML pipeline comes later
     return {
@@ -41,7 +71,7 @@ def analyse(request: AnalyseRequest):
         "portrait": "You spend to feel better. Your transactions reveal a pattern of emotional regulation — food and entertainment spike when stress is high, especially late at night. Your wallet is doing emotional work your mind hasn't processed yet.",
         "metrics": [
             { "value": "73", "label": "present bias", "color": "#D4537E" },
-            { "value": "$1,847", "label": "total analysed", "color": "#2E7D32" },
+            { "value": f"${round(total_spent, 2)}", "label": "total analysed", "color": "#2E7D32" },
             { "value": "31%", "label": "late night spend", "color": "#D4537E" },
         ],
         "insights": [
@@ -49,9 +79,5 @@ def analyse(request: AnalyseRequest):
             { "color": "#2E7D32", "label": "Social spend clusters", "text": "Your food spending peaks on Fridays and weekends, suggesting you spend more with others around." },
             { "color": "#ED93B1", "label": "Subscription creep", "text": "You have 6 active subscriptions totalling $87/month. 2 show no adjacent usage signals." },
         ],
-        "chartData": {
-            "labels": ["Food", "Shopping", "Transport", "Entertainment", "Others"],
-            "values": [701, 406, 332, 258, 150],
-            "colors": ["#D4537E", "#81C784", "#2E7D32", "#ED93B1", "#C8E6C9"],
-        }
+        "chartData": chart_data
     }
