@@ -1,71 +1,31 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import UploadScreen from './UploadScreen';
-import ResultsScreen from './ResultsScreen';
+import { useState } from 'react';
+import AuthScreen from './AuthScreen';
+import HomeScreen from './HomeScreen';
 import './App.css';
 
-function LandingScreen() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="app">
-      <div className="card">
-        <div className="logo-container">
-          <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
-            <rect x="2" y="30" width="7" height="14" rx="2" fill="#C8E6C9"/>
-            <rect x="11" y="22" width="7" height="22" rx="2" fill="#81C784"/>
-            <rect x="20" y="14" width="7" height="30" rx="2" fill="#2E7D32"/>
-            <rect x="29" y="18" width="7" height="26" rx="2" fill="#81C784"/>
-            <rect x="38" y="26" width="7" height="18" rx="2" fill="#C8E6C9"/>
-            <circle cx="24" cy="8" r="7" fill="#D4537E"/>
-            <circle cx="21.5" cy="7" r="1.3" fill="white"/>
-            <circle cx="26.5" cy="7" r="1.3" fill="white"/>
-            <path d="M21.5 10.5 Q24 12.5 26.5 10.5" stroke="white" strokeWidth="1.2" strokeLinecap="round"/>
-          </svg>
-        </div>
-
-        <p className="label">CIPHER · BEHAVIOURAL FINANCE</p>
-        <h1 className="headline">Decode your<br/>spending<br/>psychology.</h1>
-        <p className="tagline">Upload your transactions and discover what your spending reveals about you — grounded in real science, not a quiz.</p>
-
-        <div className="buttons">
-          <button className="btn-pink" onClick={() => navigate('/upload?mode=csv')}>Upload bank CSV</button>
-          <button className="btn-green" onClick={() => navigate('/upload?mode=manual')}>Add transactions manually</button>
-        </div>
-
-        <p className="demo-link">or <span onClick={() => navigate('/results')}>try a demo →</span></p>
-
-        <div className="divider" />
-        <div className="stats">
-          <div className="stat">
-            <p className="stat-number pink">6</p>
-            <p className="stat-label">archetypes</p>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat">
-            <p className="stat-number green">15+</p>
-            <p className="stat-label">behavioural signals</p>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat">
-            <p className="stat-number dark">SG</p>
-            <p className="stat-label">built for Singapore</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingScreen />} />
-        <Route path="/upload" element={<UploadScreen />} />
-        <Route path="/results" element={<ResultsScreen />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  const [user, setUser] = useState(() => {
+    const token = localStorage.getItem('cipher_token');
+    const email = localStorage.getItem('cipher_email');
+    return token ? { token, email } : null;
+  });
+
+  function handleLogin(data) {
+    setUser(data);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('cipher_token');
+    localStorage.removeItem('cipher_user_id');
+    localStorage.removeItem('cipher_email');
+    setUser(null);
+  }
+
+  if (!user) {
+    return <AuthScreen onLogin={handleLogin} />;
+  }
+
+  return <HomeScreen user={user} onLogout={handleLogout} />;
 }
 
 export default App;
