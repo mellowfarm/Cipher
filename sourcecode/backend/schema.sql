@@ -23,3 +23,12 @@ CREATE TABLE IF NOT EXISTS archetypes (
     portrait TEXT,
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS imported_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    file_hash VARCHAR NOT NULL,
+    imported_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE archetypes ADD COLUMN IF NOT EXISTS transaction_count INT DEFAULT 0;

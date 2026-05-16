@@ -17,6 +17,7 @@ function CalendarTab({ user, onAddPress }) {
   const [transactions, setTransactions] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [importStatus, setImportStatus] = useState(null); // null | 'loading' | 'success' | 'duplicate' | 'error'
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -138,21 +139,32 @@ function CalendarTab({ user, onAddPress }) {
         </div>
       </div>
 
-      {/* import card */}
-      <div style={{ padding: '0 16px 12px' }}>
+     {/* import card */}
+     <div style={{ padding: '0 16px 12px' }}>
         <div style={{ background: '#FBEAF0', borderRadius: '12px', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: '#72243E', margin: '0 0 2px' }}>Import bank statement</p>
-            <p style={{ fontSize: '11px', color: '#99354E', margin: 0 }}>Auto-fill your calendar with real data</p>
-          </div>
-          <button
+            <div>
+            <p style={{ fontSize: '11px', color: 
+                importStatus === 'success' ? '#2E7D32' : 
+                importStatus === 'duplicate' ? '#FF9F43' :
+                importStatus === 'error' ? '#D4537E' : 
+                '#99354E', margin: 0 
+            }}>
+                {importStatus === 'loading' ? 'Importing...' :
+                importStatus === 'success' ? '✓ Imported successfully!' :
+                importStatus === 'duplicate' ? '⚠ Statement already imported' :
+                importStatus === 'error' ? '✗ No transactions found' :
+                'Auto-fill your calendar with real data'}
+            </p>
+            </div>
+            <button
             className="btn-pink"
-            style={{ fontSize: '12px', padding: '8px 14px', width: 'auto', borderRadius: '20px' }}
+            style={{ fontSize: '12px', padding: '8px 14px', width: 'auto', borderRadius: '20px', opacity: importStatus === 'loading' ? 0.5 : 1 }}
             onClick={() => document.getElementById('pdf-upload').click()}
-          >
-            Upload PDF
-          </button>
-          <input id="pdf-upload" type="file" accept=".csv,.pdf" style={{ display: 'none' }} onChange={handleImport} />
+            disabled={importStatus === 'loading'}
+            >
+            {importStatus === 'loading' ? 'Importing...' : 'Upload PDF'}
+            </button>
+            <input id="pdf-upload" type="file" accept=".csv,.pdf" style={{ display: 'none' }} onChange={handleImport} />
         </div>
       </div>
 
@@ -248,6 +260,9 @@ function CalendarTab({ user, onAddPress }) {
     const file = e.target.files[0];
     if (!file) return;
     
+    e.target.value = ''; // reset input
+    setImportStatus('loading');
+    
     try {
       const token = localStorage.getItem('cipher_token');
       
@@ -256,25 +271,35 @@ function CalendarTab({ user, onAddPress }) {
         formData.append('file', file);
         const parseRes = await fetch('http://localhost:8000/parse-pdf', {
           method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
           body: formData
         });
         const parseData = await parseRes.json();
-        console.log('parsed data:', parseData); // ← add this
+        
         if (parseData.error) {
-          console.log('parse error:', parseData.error); // ← add this
+          if (parseData.error.includes('already')) {
+            setImportStatus('duplicate');
+          } else {
+            setImportStatus('error');
+          }
+          setTimeout(() => setImportStatus(null), 3000);
           return;
         }
         
-        const bulkRes = await fetch('http://localhost:8000/transactions/bulk', {
+        await fetch('http://localhost:8000/transactions/bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ transactions: parseData.transactions })
         });
-        console.log('bulk result:', await bulkRes.json()); // ← add this
+  
+        setImportStatus('success');
+        await fetchTransactions(); // await so it finishes before anything else
+        setTimeout(() => setImportStatus(null), 3000);
       }
-      fetchTransactions();
+      
     } catch (err) {
-      console.error('import error:', err);
+      setImportStatus('error');
+      setTimeout(() => setImportStatus(null), 3000);
     }
   }
 }

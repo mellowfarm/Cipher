@@ -54,6 +54,19 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+# ── helper to get current user from token ──
+# every endpoint calls this 
+# authorisation = stores JWT token (sends with every request from frontend)
+# backend verifies token, extracts user_id and knows who is making the request
+def get_current_user(authorization: str = Header(...)):
+    try:
+        token = authorization.replace("Bearer ", "")
+        user_id = decode_token(token)
+        return user_id
+    except:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
 # ── health check endpoint ──
 # when someone hits GET /health, run this fxn
 @app.get("/health")
@@ -138,95 +151,154 @@ def generate_portrait(archetype_name: str, features: dict) -> str:
     return response.choices[0].message.content.strip()
 
 @app.post("/parse-pdf")
-async def parse_pdf(file: UploadFile = File(...)):
-    import re
+async def parse_pdf(file: UploadFile = File(...), user_id: str = Depends(get_current_user)):
+    import re, hashlib
     from datetime import datetime
 
     contents = await file.read()
-    transactions = []
-    current_year = datetime.now().year
+    
+    # check if this PDF was already imported
+    file_hash = hashlib.md5(contents).hexdigest()
+    db = SessionLocal()
+    try:
+        existing = db.execute(text("""
+            SELECT id FROM imported_files 
+            WHERE user_id = :user_id AND file_hash = :file_hash
+        """), {"user_id": user_id, "file_hash": file_hash}).fetchone()
+        
+        if existing:
+            return {"error": "This statement has already been imported!"}
+        
+        transactions = []
+        current_year = datetime.now().year
+        months = {'JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'}
+        
+        skip_keywords = [
+            'payment', 'sub-total', 'subtotal', 'balance', 'total', 'interest',
+            'previous', 'statement', 'date', 'description', 'amount', 'page',
+            'citibank', 'mastercard', 'visa', 'giro', 'minimum', 'foreignamount',
+            'xxxx', 'miles', 'retail', 'kindly', 'transactionsfor',
+            'alltransactions', 'coreg', 'robinson', 'grand', 'pleasenote',
+            'ccy', 'conversion', 'bonus', 'carried', 'earned', 'redeemed',
+            'protect', 'notify', 'important', 'announcements', 'amtdebited',
+            'totalofnew', 'openingbalance', 'closingbalance', 'directdebit',
+            'membershipnumber', 'americanexpress', 'krisflyer', 'prepared',
+            'creditlimit', 'availablecredit', 'annualrate', 'currentrate',
+            'statementperiod', 'creditsummary', 'newcredits', 'newdebits',
+        ]
 
-    months = {'JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'}
-
-    skip_keywords = [
-        'payment', 'sub-total', 'subtotal', 'balance', 'total', 'interest',
-        'previous', 'statement', 'date', 'description', 'amount', 'page',
-        'citibank', 'mastercard', 'visa', 'giro', 'minimum', 'foreignamount',
-        'xxxx', 'miles', 'retail', 'kindly', 'transactionsfor',
-        'alltransactions', 'coreg', 'robinson', 'grand', 'pleasenote',
-        'ccy', 'conversion', 'bonus', 'carried', 'earned', 'redeemed',
-        'protect', 'notify', 'important', 'announcements'
-    ]
-
-    with pdfplumber.open(io.BytesIO(contents)) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if not text:
-                continue
-
-            lines = text.split('\n')
-            for line in lines:
-                line = line.strip()
-                if not line:
+        with pdfplumber.open(io.BytesIO(contents)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if not page_text:
                     continue
 
-                line_nospace = line.replace(' ', '').lower()
-                if any(k in line_nospace for k in skip_keywords):
-                    continue
-
-                # match DD+MON at start e.g. "22MAR" or "01APR"
-                match = re.match(r'^(\d{1,2})([A-Z]{3})\s+(.+)$', line)
-                if not match:
-                    continue
-
-                day = match.group(1)
-                mon = match.group(2)
-                rest = match.group(3)
-
-                if mon not in months:
-                    continue
-
-                # extract amount from end
-                amt_match = re.search(r'(\d{1,3}(?:,\d{3})*\.\d{2})$', rest)
-                if not amt_match:
-                    continue
-
-                amount_str = amt_match.group(1)
-                description = rest[:amt_match.start()].strip()
-
-                # clean description
-                description = re.sub(r'\s+(?:Singapore|SINGAPORE)\s*\w*$', '', description).strip()
-                description = re.sub(r'\s+[A-Z]{2,3}$', '', description).strip()
-                description = re.sub(r'\s+\w+\s+(?:SG|MY|IE|US|AU)$', '', description).strip()
-
-                if not description:
-                    continue
-
-                try:
-                    amount = float(amount_str.replace(',', ''))
-                    if amount <= 0:
+                lines = page_text.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if not line:
                         continue
 
-                    month_num = datetime.strptime(mon, "%b").month
-                    year = current_year if month_num <= datetime.now().month else current_year - 1
-                    date_obj = datetime.strptime(f"{day} {mon} {year}", "%d %b %Y")
-                    date_formatted = date_obj.strftime("%Y-%m-%d")
+                    # skip lines ending in CR (credits/refunds)
+                    if line.endswith('CR') or line.endswith('\nCR'):
+                        continue
 
-                    transactions.append({
-                        "description": description,
-                        "amount": amount,
-                        "category": "",
-                        "time": "",
-                        "date": date_formatted
-                    })
+                    line_nospace = line.replace(' ', '').lower()
+                    if any(k in line_nospace for k in skip_keywords):
+                        continue
 
-                except Exception:
-                    continue
+                    # ── Pattern 1: Citibank DD MMM e.g. "22MAR GRAB 39.60" ──
+                    match1 = re.match(r'^(\d{1,2})([A-Z]{3})\s+(.+)$', line)
+                    if match1:
+                        day = match1.group(1)
+                        mon = match1.group(2)
+                        rest = match1.group(3)
 
-    if not transactions:
-        return {"error": "No transactions found in PDF"}
+                        if mon not in months:
+                            continue
 
-    return {"transactions": transactions}
+                        amt_match = re.search(r'(\d{1,3}(?:,\d{3})*\.\d{2})$', rest)
+                        if not amt_match:
+                            continue
+
+                        amount_str = amt_match.group(1)
+                        description = rest[:amt_match.start()].strip()
+                        description = re.sub(r'\s+(?:Singapore|SINGAPORE)\s*\w*$', '', description).strip()
+                        description = re.sub(r'\s+[A-Z]{2,3}$', '', description).strip()
+                        description = re.sub(r'\s+\w+\s+(?:SG|MY|IE|US|AU)$', '', description).strip()
+
+                        if not description:
+                            continue
+
+                        try:
+                            amount = float(amount_str.replace(',', ''))
+                            if amount <= 0:
+                                continue
+                            month_num = datetime.strptime(mon, "%b").month
+                            year = current_year if month_num <= datetime.now().month else current_year - 1
+                            date_obj = datetime.strptime(f"{day} {mon} {year}", "%d %b %Y")
+                            date_formatted = date_obj.strftime("%Y-%m-%d")
+                            transactions.append({
+                                "description": description,
+                                "amount": amount,
+                                "category": "",
+                                "time": "",
+                                "date": date_formatted
+                            })
+                        except Exception:
+                            continue
+                        continue
+
+                    # ── Pattern 2: Amex DD.MM.YY e.g. "07.03.26 LOTTE 101.40" ──
+                    match2 = re.match(r'^(\d{2})\.(\d{2})\.(\d{2})\s+(.+)$', line)
+                    if match2:
+                        day = match2.group(1)
+                        month_num = int(match2.group(2))
+                        year_short = int(match2.group(3))
+                        rest = match2.group(4)
+
+                        amt_match = re.search(r'(\d{1,3}(?:,\d{3})*\.\d{2})$', rest)
+                        if not amt_match:
+                            continue
+
+                        amount_str = amt_match.group(1)
+                        description = rest[:amt_match.start()].strip()
+                        description = re.sub(r'\s+SINGAPORE$', '', description).strip()
+                        description = re.sub(r'\s+[A-Z]{2,3}$', '', description).strip()
+
+                        if not description:
+                            continue
+
+                        try:
+                            amount = float(amount_str.replace(',', ''))
+                            if amount <= 0:
+                                continue
+                            full_year = 2000 + year_short
+                            date_formatted = f"{full_year}-{str(month_num).zfill(2)}-{day}"
+                            transactions.append({
+                                "description": description,
+                                "amount": amount,
+                                "category": "",
+                                "time": "",
+                                "date": date_formatted
+                            })
+                        except Exception:
+                            continue
+
+        if not transactions:
+            return {"error": "No transactions found in PDF"}
+
+        # save file hash
+        db.execute(text("""
+            INSERT INTO imported_files (user_id, file_hash)
+            VALUES (:user_id, :file_hash)
+        """), {"user_id": user_id, "file_hash": file_hash})
+        db.commit()
+
+        return {"transactions": transactions}
+
+    finally:
+        db.close()
 
 @app.post("/debug-pdf")
 async def debug_pdf(file: UploadFile = File(...)):
@@ -292,18 +364,6 @@ def login(request: LoginRequest):
     
     finally:
         db.close()
-
-# ── helper to get current user from token ──
-# every endpoint calls this 
-# authorisation = stores JWT token (sends with every request from frontend)
-# backend verifies token, extracts user_id and knows who is making the request
-def get_current_user(authorization: str = Header(...)):
-    try:
-        token = authorization.replace("Bearer ", "")
-        user_id = decode_token(token)
-        return user_id
-    except:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 # ── transaction endpoints ──
 
@@ -405,12 +465,24 @@ def get_insights(user_id: str = Depends(get_current_user)):
         if count < 20:
             return {"unlocked": False, "transaction_count": count}
 
+        # check if cached archetype exists and transaction count hasn't changed
+        cached = db.execute(text("""
+            SELECT archetype_name, portrait, transaction_count, updated_at 
+            FROM archetypes WHERE user_id = :user_id
+        """), {"user_id": user_id}).fetchone()
+
+        if cached and cached.transaction_count == count:
+            # return cached version — no Groq call!
+            import json
+            return json.loads(cached.portrait)
+
+        # generate new archetype
         features = extract_features(transactions)
         archetype_name, archetype_data, scores = assign_archetype(features)
-        insights = generate_insights(features, archetype_name)
+        insights_data = generate_insights(features, archetype_name)
         portrait = generate_portrait(archetype_name, features)
 
-        return {
+        result = {
             "unlocked": True,
             "transaction_count": count,
             "archetype": archetype_name,
@@ -421,8 +493,29 @@ def get_insights(user_id: str = Depends(get_current_user)):
                 {"value": f"{round(features.get('late_night_ratio', 0) * 100)}%", "label": "late night spend", "color": "#D4537E"},
                 {"value": features.get("top_category", ""), "label": "top category", "color": "#FF6B6B"},
             ],
-            "insights": insights
+            "insights": insights_data
         }
+
+        # save to archetypes table
+        import json
+        db.execute(text("""
+            INSERT INTO archetypes (user_id, archetype_name, portrait, transaction_count)
+            VALUES (:user_id, :archetype_name, :portrait, :transaction_count)
+            ON CONFLICT (user_id) DO UPDATE SET
+                archetype_name = :archetype_name,
+                portrait = :portrait,
+                transaction_count = :transaction_count,
+                updated_at = NOW()
+        """), {
+            "user_id": user_id,
+            "archetype_name": archetype_name,
+            "portrait": json.dumps(result),
+            "transaction_count": count
+        })
+        db.commit()
+
+        return result
+
     finally:
         db.close()
 
