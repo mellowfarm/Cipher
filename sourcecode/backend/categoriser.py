@@ -1,7 +1,31 @@
-# Rule-based transaction categoriser for Singapore merchants
-# Will be replaced with ML model once we have enough labelled data
+import re
+import pickle
+import os
 
-# keyword rules — order matters, more specific rules first
+# ── load ML model ──
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'categoriser_model.pkl')
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        try:
+            with open(MODEL_PATH, 'rb') as f:
+                _model = pickle.load(f)
+        except Exception as e:
+            print(f"Warning: could not load ML model: {e}")
+    return _model
+
+def clean_description(text):
+    text = str(text).lower()
+    text = re.sub(r'\*[a-z0-9\-]+', ' grab ', text)
+    text = re.sub(r'bill_[a-z0-9]+', ' parking ', text)
+    text = re.sub(r'\d+', ' ', text)
+    text = re.sub(r'[^a-z\s]', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+# Rule-based transaction categoriser for Singapore merchants -- fallback if ML model is funky
 RULES = {
     "Food": [
         "mcdonald", "mcdonalds", "kfc", "burger king", "subway", "pizza",
@@ -79,33 +103,42 @@ RULES = {
     ],
 }
 
-def categorise(description: str) -> str:
-    """
-    Takes a transaction description and returns its category.
-    Checks each rule in order — returns the first match.
-    Falls back to 'Others' if nothing matches.
-    """
-    description_lower = description.lower().strip()
-
+def rule_based_categorise(description):
+    desc_lower = description.lower()
     for category, keywords in RULES.items():
-        for keyword in keywords:
-            if keyword in description_lower:
+        for kw in keywords:
+            if kw in desc_lower:
                 return category
+    return None
 
-    return "Others"
+def ml_categorise(description):
+    model = get_model()
+    if model is None:
+        return None, 0.0
+    try:
+        cleaned = clean_description(description)
+        pred = model.predict([cleaned])[0]
+        proba = max(model.predict_proba([cleaned])[0]) # predict_proba() returns a probability for every category & max picks the highest one
+        return pred, proba
+    except Exception:
+        return None, 0.0
 
 
-def categorise_transactions(transactions: list) -> list:
-    """
-    Takes a list of transactions and adds a predicted category to each.
-    If the transaction already has a category from the user, keeps it.
-    """
-    categorised = []
+def categorise_transactions(transactions):
+    result = []
     for tx in transactions:
-        tx_dict = dict(tx) if hasattr(tx, '__dict__') else tx
-        predicted = categorise(tx_dict.get('description', ''))
-        categorised.append({
-            **tx_dict,
-            "predicted_category": predicted
-        })
-    return categorised
+        desc = tx.get('description', '')
+        user_cat = tx.get('category', '')
+        
+        if user_cat and user_cat != 'Others':
+            predicted = user_cat # if user set it, respect it and skip ML 
+        else:
+            pred, conf = ml_categorise(desc) # ask ML model 
+            if pred and conf > 0.25: # if ML is confident enough, use it
+                predicted = pred 
+            else:
+                rule_pred = rule_based_categorise(desc) # fallback on rules 
+                predicted = rule_pred if rule_pred else 'Others'
+        
+        result.append({**tx, 'predicted_category': predicted}) # add category to tx
+    return result
