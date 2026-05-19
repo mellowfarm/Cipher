@@ -9,6 +9,7 @@ function HomeScreen({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('calendar');
   const [showAddModal, setShowAddModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); 
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   function triggerRefresh() { 
     setRefreshKey(k => k + 1);
@@ -32,8 +33,8 @@ function HomeScreen({ user, onLogout }) {
 
         {/* tab content - scrollable */}
         <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '80px' }}>
-          {activeTab === 'calendar' && <CalendarTab key={refreshKey} user={user} onAddPress={() => setShowAddModal(true)} />}
-          {activeTab === 'transactions' && <TransactionsTab key={refreshKey} user={user} onRefresh={triggerRefresh} />}
+          {activeTab === 'transactions' && <TransactionsTab key={refreshKey} user={user} onRefresh={triggerRefresh} currentMonth={currentMonth} onMonthChange={setCurrentMonth} />}
+          {activeTab === 'calendar' && <CalendarTab key={refreshKey} user={user} currentMonth={currentMonth} onMonthChange={setCurrentMonth} />}
           {activeTab === 'insights' && <InsightsTab user={user} />}
           {activeTab === 'profile' && <ProfileTab user={user} onLogout={onLogout} />}
         </div>

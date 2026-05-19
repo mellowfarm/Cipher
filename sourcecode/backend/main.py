@@ -531,6 +531,13 @@ def delete_transaction(tx_id: str, user_id: str = Depends(get_current_user)):
 def update_transaction(tx_id: str, request: dict, user_id: str = Depends(get_current_user)):
     db = SessionLocal()
     try:
+        # get original category before updating
+        original = db.execute(text("""
+            SELECT predicted_category FROM transactions 
+            WHERE id = :id AND user_id = :user_id
+        """), {"id": tx_id, "user_id": user_id}).fetchone()
+        original_category = original.predicted_category if original else ""
+
         categorised = categorise_transactions([{
             "description": request.get("description", ""),
             "amount": request.get("amount", 0),
@@ -554,10 +561,24 @@ def update_transaction(tx_id: str, request: dict, user_id: str = Depends(get_cur
             "description": request.get("description", ""),
             "amount": request.get("amount", 0),
             "category": request.get("category", ""),
-            "predicted_category": predicted,
+            "predicted_category": request.get("category", ""),  # use user's chosen category
             "time": request.get("time", ""),
             "date": request.get("date", "")
         })
+
+        # only save to training queue if category actually changed
+        new_category = request.get("category", "")
+        if new_category and new_category != original_category:
+            db.execute(text("""
+                INSERT INTO training_queue (user_id, description, correct_category, original_category)
+                VALUES (:user_id, :description, :correct_category, :original_category)
+            """), {
+                "user_id": user_id,
+                "description": request.get("description", ""),
+                "correct_category": new_category,
+                "original_category": original_category
+            })
+
         db.commit()
         return {"success": True}
     finally:

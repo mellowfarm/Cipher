@@ -24,10 +24,9 @@ const CATEGORY_ICONS = {
   Others: '📦',
 };
 
-function TransactionsTab({ user, onRefresh }) {
+function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [expandedTx, setExpandedTx] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
 
@@ -89,9 +88,9 @@ function TransactionsTab({ user, onRefresh }) {
       <div style={{ padding: '16px', borderBottom: '0.5px solid #E0E0E0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <button onClick={() => setCurrentMonth(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '18px', cursor: 'pointer', padding: '0' }}>‹</button>
+            <button onClick={() => onMonthChange(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '18px', cursor: 'pointer', padding: '0' }}>‹</button>
             <span style={{ fontSize: '13px', color: '#666' }}>{monthName}</span>
-            <button onClick={() => setCurrentMonth(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '18px', cursor: 'pointer', padding: '0' }}>›</button>
+            <button onClick={() => onMonthChange(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '18px', cursor: 'pointer', padding: '0' }}>›</button>
           </div>
           <span style={{ fontSize: '22px', fontWeight: '500', color: '#1A1A1A' }}>${totalSpent.toFixed(2)}</span>
         </div>
@@ -187,7 +186,6 @@ function EditModal({ tx, onClose, onSaved }) {
   const [amount, setAmount] = useState(tx.amount);
   const [category, setCategory] = useState(tx.category || tx.predicted_category || 'Food');
   const [date, setDate] = useState(tx.date);
-  const [time, setTime] = useState(tx.time || '');
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
@@ -200,7 +198,7 @@ function EditModal({ tx, onClose, onSaved }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ description, amount: parseFloat(amount), category, date, time })
+        body: JSON.stringify({ description, amount: parseFloat(amount), category, date})
       });
       onSaved();
     } catch (err) {
@@ -243,13 +241,6 @@ function EditModal({ tx, onClose, onSaved }) {
             <option>Subscriptions</option>
             <option>Utilities</option>
             <option>Others</option>
-          </select>
-          <select className="input" value={time} onChange={e => setTime(e.target.value)}>
-            <option value="">Time of day (optional)</option>
-            <option value="morning">Morning (6am–12pm)</option>
-            <option value="afternoon">Afternoon (12pm–6pm)</option>
-            <option value="evening">Evening (6pm–10pm)</option>
-            <option value="late night">Late night (10pm–6am)</option>
           </select>
         </div>
         <button className="btn-pink" style={{ width: '100%', marginTop: '8px' }} onClick={handleSave} disabled={loading}>

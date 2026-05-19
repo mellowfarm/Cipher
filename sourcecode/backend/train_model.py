@@ -6,6 +6,12 @@ from sklearn.model_selection import cross_val_score
 import pickle
 import re
 import os
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+base = os.path.dirname(__file__)
 
 def clean(text):
     text = str(text).lower()
@@ -16,13 +22,34 @@ def clean(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-# load data: combine real and synthetic for training 
-base = os.path.dirname(__file__)
+# ── load base training data ──
 real = pd.read_csv(os.path.join(base, 'cipher_training_data.csv'))
 synthetic = pd.read_csv(os.path.join(base, 'synthetic_training_data.csv'))
-df = pd.concat([real, synthetic], ignore_index=True)
 
-print(f"Total samples: {len(df)} (real: {len(real)}, synthetic: {len(synthetic)})")
+# ── pull user corrections from Neon ──
+try:
+    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT description, correct_category 
+        FROM training_queue 
+        WHERE correct_category != ''
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
+    corrections = pd.DataFrame(rows, columns=['description', 'category'])
+    corrections['source'] = 'user_correction'
+    corrections['notes'] = 'from user edit'
+    print(f"User corrections: {len(corrections)}")
+except Exception as e:
+    print(f"Could not load corrections: {e}")
+    corrections = pd.DataFrame(columns=['description', 'category', 'source', 'notes'])
+
+# ── combine all data ──
+df = pd.concat([real, synthetic, corrections], ignore_index=True)
+
+print(f"Total samples: {len(df)} (real: {len(real)}, synthetic: {len(synthetic)}, corrections: {len(corrections)})")
 print(df['category'].value_counts())
 
 df['cleaned'] = df['description'].apply(clean)
@@ -54,12 +81,13 @@ pipeline = Pipeline([
     ))
 ])
 
-scores = cross_val_score(pipeline, df['cleaned'], df['category'], cv=5, scoring='accuracy')  # 5-fold cross-validation for unseen data (accuracy check)
+# 5-fold cross-validation for unseen data (accuracy check)
+scores = cross_val_score(pipeline, df['cleaned'], df['category'], cv=5, scoring='accuracy')
 print(f"\nCV Accuracy: {scores.mean():.2f} ± {scores.std():.2f}")
 
-pipeline.fit(df['cleaned'], df['category']) # actual training on all data 
+pipeline.fit(df['cleaned'], df['category'])  # actual training on all data
 
 with open(os.path.join(base, 'categoriser_model.pkl'), 'wb') as f:
-    pickle.dump(pipeline, f) # save the trained model 
+    pickle.dump(pipeline, f)  # save the trained model
 
 print(f"\nModel saved to categoriser_model.pkl!")

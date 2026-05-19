@@ -32,3 +32,12 @@ CREATE TABLE IF NOT EXISTS imported_files (
 );
 
 ALTER TABLE archetypes ADD COLUMN IF NOT EXISTS transaction_count INT DEFAULT 0;
+
+CREATE TABLE training_queue (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    description VARCHAR NOT NULL,
+    correct_category VARCHAR NOT NULL,
+    original_category VARCHAR,
+    created_at TIMESTAMP DEFAULT NOW()
+);
