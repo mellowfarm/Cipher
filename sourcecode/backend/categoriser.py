@@ -1,29 +1,23 @@
 import re
+from sentence_transformers import SentenceTransformer
 import pickle
 import os
 
-# ── load ML model ──
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'categoriser_model.pkl')
-_model = None
+_clf = None
+_st_model = None
 
 def get_model():
-    global _model
-    if _model is None:
+    global _clf, _st_model
+    if _clf is None:
         try:
-            with open(MODEL_PATH, 'rb') as f:
-                _model = pickle.load(f)
+            model_path = os.path.join(os.path.dirname(__file__), 'cipher_categoriser_v3.pkl')
+            with open(model_path, 'rb') as f:
+                _clf = pickle.load(f)
+            _st_model = SentenceTransformer('all-MiniLM-L6-v2')
+            print("ML model loaded successfully!")
         except Exception as e:
             print(f"Warning: could not load ML model: {e}")
-    return _model
-
-def clean_description(text):
-    text = str(text).lower()
-    text = re.sub(r'\*[a-z0-9\-]+', ' grab ', text)
-    text = re.sub(r'bill_[a-z0-9]+', ' parking ', text)
-    text = re.sub(r'\d+', ' ', text)
-    text = re.sub(r'[^a-z\s]', ' ', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+    return _clf, _st_model
 
 # Rule-based transaction categoriser for Singapore merchants -- fallback if ML model is funky
 RULES = {
@@ -60,7 +54,7 @@ RULES = {
         'parking.sg', 'parking.sgbill', 'wilson parking', 'ura parking',
         'shell', 'caltex', 'esso', 'exxonmobil', 'spc petrol', 'bp petrol',
         'singaporeair', 'singapore airlines', 'scoot', 'jetstar', 'airasia',
-        'tigerair', 'batik air', 'egencia',
+        'tigerair', 'batik air', 'egencia', 'petroleum',
     ],
     'Entertainment': [
         'golden village', 'gv cinema', 'shaw theatres', 'cathay cinema',
@@ -97,13 +91,13 @@ def rule_based_categorise(description):
     return None
 
 def ml_categorise(description):
-    model = get_model()
-    if model is None:
+    clf, st_model = get_model()
+    if clf is None or st_model is None:
         return None, 0.0
     try:
-        cleaned = clean_description(description)
-        pred = model.predict([cleaned])[0]
-        proba = max(model.predict_proba([cleaned])[0]) # predict_proba() returns a probability for every category & max picks the highest one
+        embedding = st_model.encode([description])
+        pred = clf.predict(embedding)[0]
+        proba = max(clf.predict_proba(embedding)[0])
         return pred, proba
     except Exception:
         return None, 0.0
@@ -115,15 +109,18 @@ def categorise_transactions(transactions):
         desc = tx.get('description', '')
         user_cat = tx.get('category', '')
         
+        # 1. user explicitly set category → always respect it
         if user_cat and user_cat != 'Others':
-            predicted = user_cat # if user set it, respect it and skip ML 
+            predicted = user_cat
         else:
-            pred, conf = ml_categorise(desc) # ask ML model 
-            if pred and conf > 0.25: # if ML is confident enough, use it
-                predicted = pred 
+            # 2. try rules first — fast and reliable for known SG merchants
+            rule_pred = rule_based_categorise(desc)
+            if rule_pred:
+                predicted = rule_pred
             else:
-                rule_pred = rule_based_categorise(desc) # fallback on rules 
-                predicted = rule_pred if rule_pred else 'Others'
+                # 3. fall back to ML for unknown merchants
+                pred, conf = ml_categorise(desc)
+                predicted = pred if pred and conf > 0.25 else 'Others'
         
-        result.append({**tx, 'predicted_category': predicted}) # add category to tx
+        result.append({**tx, 'predicted_category': predicted})
     return result

@@ -1,19 +1,5 @@
 # Cipher — Project Status
 
-*Last updated: May 2026*
-
------
-
-## What is Cipher
-
-A behavioural science-backed personal finance app that derives financial psychology from spending data using a multi-layer ML pipeline. Users upload bank PDFs → Cipher categorises transactions, detects patterns, assigns a spending archetype, and generates a personalised portrait.
-
-**Positioning:** Behavioural science + ML + consumer product. Nobody in SEA has all three.
-
-**Team:** 3 people (Nicha + 2 others). Frontend/backend split.
-
------
-
 ## Tech Stack
 
 |Layer     |Tech                                                |
@@ -58,12 +44,6 @@ A behavioural science-backed personal finance app that derives financial psychol
 
 -----
 
-## What’s In Progress 🔄
-
-- [ ] More transaction data needed to improve categorisation model
-
------
-
 ## What’s Next — ML Upgrade Roadmap 🚀
 
 ### Phase 1 — Smarter Categorisation (do this weekend)
@@ -78,10 +58,10 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 # embed categories once, compare each transaction at runtime
 ```
 
-- [ ] Install sentence-transformers
-- [ ] Replace TF-IDF vectoriser with zero-shot sentence transformer pipeline
-- [ ] Test on existing transaction data, identify failure cases (Singapore merchants like Koufu, NTUC, EZ-Link)
-- [ ] If consistent errors → fine-tune on those specific cases
+- [x] Install sentence-transformers
+- [x] Replace TF-IDF vectoriser with zero-shot sentence transformer pipeline
+- [x] Test on existing transaction data, identify failure cases (Singapore merchants like Koufu, NTUC, EZ-Link)
+- [x] If consistent errors → fine-tune on those specific cases
 
 **Interview story:** “I started with TF-IDF, identified limitations on unseen Singapore merchants, upgraded to sentence transformers with zero-shot classification”
 
