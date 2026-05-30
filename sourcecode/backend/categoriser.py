@@ -124,3 +124,7 @@ def categorise_transactions(transactions):
         
         result.append({**tx, 'predicted_category': predicted})
     return result
+
+def get_st_model():
+    _, st_model = get_model()
+    return st_model

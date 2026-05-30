@@ -63,22 +63,19 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 - [x] Test on existing transaction data, identify failure cases (Singapore merchants like Koufu, NTUC, EZ-Link)
 - [x] If consistent errors → fine-tune on those specific cases
 
-**Interview story:** “I started with TF-IDF, identified limitations on unseen Singapore merchants, upgraded to sentence transformers with zero-shot classification”
-
 -----
 
 ### Phase 2 — Semantic Search (FAISS)
 
 **Add vector search over user’s transactions**
 
+feature: user types query → embed it → FAISS search over tx embeddings → retrieve top-k → LLM summarizes → show answer
+
 User queries like “how much did I spend on food last month” → semantic search over transaction embeddings → retrieve relevant transactions → LLM summarises.
 
 - [ ] Build FAISS index over user’s transaction embeddings
 - [ ] Add semantic search endpoint in FastAPI
 - [ ] Connect to frontend as a query feature
-
-**Interview story:** mirrors friend’s TikTok interview — “I built a retrieval pipeline using bi-encoders for fast candidate retrieval” (bi-encoder = sentence transformer here)
-
 -----
 
 ### Phase 3 — Spending Forecasting
@@ -127,18 +124,9 @@ DBSCAN or KMeans on behavioural features extracted from transaction history.
 |V2     |Understand yourself — user accounts, longitudinal tracking, Cipher Wrapped          |in progress|
 |V3     |Change yourself — nudges, commitment devices, peer benchmarking                     |planned    |
 |V4     |Recommend for yourself — behaviourally matched product recommendations, monetisation|future     |
-
 -----
 
-## Interview Story Arc
-
-> “I built a personal finance app with a semantic transaction search engine. Started with TF-IDF for categorisation, identified failure cases on Singapore-specific merchants, upgraded to a sentence transformer zero-shot pipeline. Then built a FAISS vector index over user transactions to enable semantic queries — similar to a retrieval pipeline in a search system. The ML models do the analytical work; the LLM at the end narrates the outputs into human language.”
-
-This mirrors exactly what the TikTok vertical search intern talked about across all 3 interview rounds.
-
------
-
-## Key Numbers (for interviews)
+## Key Numbers
 
 - 3-person team
 - React + FastAPI + PostgreSQL + sentence-transformers + FAISS
