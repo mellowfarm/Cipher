@@ -82,10 +82,10 @@ feature: user selects category + time period → DB filters by predicted_categor
 
 Linear regression or moving average over monthly aggregated totals. No external training data — fit on user’s own history.
 
-- [ ] Aggregate transactions into monthly totals per category
-- [ ] Fit linear regression (sklearn) on user’s history
-- [ ] Show “you’re on track to spend $X on food this month”
-- [ ] Handle cold start (< 2 months data) gracefully
+- [x] Aggregate transactions into monthly totals per category
+- [x] Fit linear regression (sklearn) on user’s history
+- [x] Show “you’re on track to spend $X on food this month”
+- [x] Handle cold start (< 2 months data) gracefully
 
 -----
 

@@ -14,6 +14,7 @@ from auth import hash_password, verify_password, create_token, decode_token
 from database import get_db, SessionLocal
 from sqlalchemy import text
 import uuid
+from forecast import forecast_next_month
 
 app = FastAPI() # creates FastAPI server 
 load_dotenv() # loads .env file 
@@ -70,7 +71,12 @@ def get_current_user(authorization: str = Header(...)):
 # when someone hits GET /health, run this fxn
 @app.get("/health")
 def health():
-    return { "status": "ok" }
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    finally:
+        db.close()
 
 # ── main analyse endpoint ──
 # when React sends transactions to POST /analyse, this function runs and returns the mock results
@@ -636,3 +642,24 @@ def search_transactions(category: str, period: str, user_id: str = Depends(get_c
     finally:
         db.close()
 
+@app.get("/forecast")
+def get_forecast(user_id: str = Depends(get_current_user)):
+    db = SessionLocal()
+    try: 
+        rows = db.execute(text("""
+            SELECT * FROM transactions
+            WHERE user_id = :user_id
+        """), {"user_id": user_id}).fetchall()
+        transactions = [dict(row._mapping) for row in rows]
+        
+        categories = ["Food", "Groceries", "Transport", "Shopping", "Entertainment", "Health", "Subscriptions", "Utilities"]
+
+        forecasts = []
+        for cat in categories:
+            result = forecast_next_month(transactions, cat)
+            if result["current_spend"] > 0 or result["predicted"] > 0:
+                forecasts.append({"category": cat, **result})
+        
+        return {"forecasts": forecasts} # convention for APIs, makes response extensible 
+    finally:
+        db.close()

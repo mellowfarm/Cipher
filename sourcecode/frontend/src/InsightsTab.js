@@ -7,6 +7,8 @@ function InsightsTab({ user }) {
   const [insights, setInsights] = useState(null);
   const [txCount, setTxCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [forecasts, setForecasts] = useState([]);
+  const [forecastLoading, setForecastLoading] = useState(false);
 
   const [category, setCategory] = useState('Food');
   const [timePeriod, setTimePeriod] = useState('last month');
@@ -54,6 +56,22 @@ function InsightsTab({ user }) {
     }
   }
 
+  async function fetchForecasts() {
+    setForecastLoading(true);
+    try {
+      const token = localStorage.getItem('cipher_token');
+      const res = await fetch('http://localhost:8000/forecast', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setForecasts(data.forecasts || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setForecastLoading(false);
+    }
+  }
+
   function clearSearch() {
     setSearchResult(null);
   }
@@ -78,6 +96,7 @@ function InsightsTab({ user }) {
         <div style={{ display: 'flex', background: '#F5F5F5', borderRadius: '10px', padding: '3px', gap: '3px' }}>
           <button style={subtabStyle('insights')} onClick={() => setActiveSubtab('insights')}>Insights</button>
           <button style={subtabStyle('ask')} onClick={() => setActiveSubtab('ask')}>Ask Cipher</button>
+          <button style={subtabStyle('forecast')} onClick={() => { setActiveSubtab('forecast'); fetchForecasts(); }}>Forecast</button>
         </div>
       </div>
 
@@ -195,6 +214,35 @@ function InsightsTab({ user }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {activeSubtab === 'forecast' && (
+        <div style={{ padding: '16px' }}>
+          {forecastLoading && (
+            <p style={{ textAlign: 'center', color: '#999', fontSize: '13px', padding: '40px 0' }}>Loading...</p>
+          )}
+          {!forecastLoading && forecasts.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <p style={{ fontSize: '28px', marginBottom: '8px' }}>📊</p>
+              <p style={{ fontSize: '13px', color: '#999' }}>Not enough data to forecast yet</p>
+            </div>
+          )}
+          {!forecastLoading && forecasts.map((f, i) => (
+            <div key={i} style={{ padding: '12px 0', borderBottom: i < forecasts.length - 1 ? '0.5px solid #E0E0E0' : 'none' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <p style={{ fontSize: '13px', fontWeight: '500', color: '#1A1A1A', margin: 0 }}>{f.category}</p>
+                <p style={{ fontSize: '13px', color: '#D4537E', fontWeight: '500', margin: 0 }}>${f.predicted} predicted</p>
+              </div>
+              <div style={{ background: '#F5F5F5', borderRadius: '100px', height: '6px', overflow: 'hidden', marginBottom: '4px' }}>
+                <div style={{ background: '#D4537E', height: '100%', width: `${Math.min((f.current_spend / f.predicted) * 100, 100)}%`, borderRadius: '100px' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>${f.current_spend} spent so far</p>
+                <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>{f.current_spend > 0 ? `on track for $${f.projected}` : 'no spending yet'}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

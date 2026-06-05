@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthScreen from './AuthScreen';
 import HomeScreen from './HomeScreen';
 import './App.css';
@@ -9,6 +9,10 @@ function App() {
     const email = localStorage.getItem('cipher_email');
     return token ? { token, email } : null;
   });
+
+  useEffect(() => {
+    fetch('http://localhost:8000/health').catch(() => {});
+  }, []);
 
   function handleLogin(data) {
     setUser(data);
