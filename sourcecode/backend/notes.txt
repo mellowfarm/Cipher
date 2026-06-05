@@ -1,0 +1,12 @@
+transactions format:
+{
+    "id": "abc-123",
+    "user_id": "xyz-456",
+    "description": "KOPITIAM INVESTMENT",
+    "amount": 8.50,
+    "category": "",
+    "predicted_category": "Food",
+    "time": "",
+    "date": "2026-04-06",
+    "created_at": "..."
+}
