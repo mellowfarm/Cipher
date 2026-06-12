@@ -6,7 +6,7 @@ import pdfplumber
 from dotenv import load_dotenv
 import os
 import io
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from categoriser import categorise_transactions
 from features import extract_features 
 from archetypes import assign_archetype, generate_insights
@@ -54,7 +54,7 @@ class AnalyseRequest(BaseModel):
     transactions: List[Transaction]
 
 class RegisterRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 class LoginRequest(BaseModel):
@@ -327,6 +327,9 @@ async def debug_pdf(file: UploadFile = File(...)):
 # ── register endpoint ──
 @app.post("/register")
 def register(request: RegisterRequest):
+    if len(request.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    
     db = SessionLocal()
     try:
         # check if email already exists
