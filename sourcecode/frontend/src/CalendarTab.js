@@ -15,6 +15,7 @@ function CalendarTab({ user, currentMonth, onMonthChange }) {
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchTransactions(); }, [currentMonth]);
 
   async function fetchTransactions() {

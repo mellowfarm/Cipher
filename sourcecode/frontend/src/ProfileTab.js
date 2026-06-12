@@ -22,7 +22,7 @@ function ProfileTab({ user, onLogout }) {
 
         <button
           onClick={() => setShowNotifModal(true)}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '0.5px solid #E0E0E0', width: '100%', background: 'none', border: 'none', borderBottom: '0.5px solid #E0E0E0', cursor: 'pointer', fontFamily: 'inherit' }}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderBottom: '0.5px solid #E0E0E0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '18px' }}>🔔</span>
@@ -183,7 +183,6 @@ function ChangePasswordModal({ user, onClose }) {
 
     setLoading(true);
     try {
-      // re-authenticate with current password to verify
       const loginRes = await fetch(`${process.env.REACT_APP_API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
