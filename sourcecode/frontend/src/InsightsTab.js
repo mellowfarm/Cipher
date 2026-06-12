@@ -9,6 +9,8 @@ function InsightsTab({ user }) {
   const [loading, setLoading] = useState(true);
   const [forecasts, setForecasts] = useState([]);
   const [forecastLoading, setForecastLoading] = useState(false);
+  const [anomalies, setAnomalies] = useState([]);
+  const [anomalyLoading, setAnomalyLoading] = useState(false);
 
   const [category, setCategory] = useState('Food');
   const [timePeriod, setTimePeriod] = useState('last month');
@@ -18,25 +20,40 @@ function InsightsTab({ user }) {
   const CATEGORIES = ['Food', 'Groceries', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Subscriptions', 'Utilities'];
   const TIME_PERIODS = ['this month', 'last month', 'this year', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  useEffect(() => {
-    fetchInsights();
-  }, []);
+  useEffect(() => { fetchInsights(); }, []);
 
   async function fetchInsights() {
     setLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch('http://localhost:8000/insights', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch('http://localhost:8000/insights', { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       setTxCount(data.transaction_count || 0);
       if (data.unlocked) setInsights(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }
+
+  async function fetchForecasts() {
+    setForecastLoading(true);
+    try {
+      const token = localStorage.getItem('cipher_token');
+      const res = await fetch('http://localhost:8000/forecast', { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      setForecasts(data.forecasts || []);
+    } catch (err) { console.error(err); }
+    finally { setForecastLoading(false); }
+  }
+
+  async function fetchAnomalies() {
+    setAnomalyLoading(true);
+    try {
+      const token = localStorage.getItem('cipher_token');
+      const res = await fetch('http://localhost:8000/anomalies', { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      setAnomalies(data.anomalies || []);
+    } catch (err) { console.error(err); }
+    finally { setAnomalyLoading(false); }
   }
 
   async function handleSearch() {
@@ -47,135 +64,55 @@ function InsightsTab({ user }) {
       const res = await fetch(`http://localhost:8000/search?category=${encodeURIComponent(category)}&period=${encodeURIComponent(timePeriod)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await res.json();
-      setSearchResult(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearchLoading(false);
-    }
+      setSearchResult(await res.json());
+    } catch (err) { console.error(err); }
+    finally { setSearchLoading(false); }
   }
 
-  async function fetchForecasts() {
-    setForecastLoading(true);
-    try {
-      const token = localStorage.getItem('cipher_token');
-      const res = await fetch('http://localhost:8000/forecast', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      setForecasts(data.forecasts || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setForecastLoading(false);
-    }
-  }
-
-  function clearSearch() {
-    setSearchResult(null);
-  }
-
-  const subtabStyle = (tab) => ({
-    flex: 1,
-    padding: '7px 0',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '13px',
-    fontFamily: 'inherit',
-    cursor: 'pointer',
-    background: activeSubtab === tab ? '#D4537E' : 'transparent',
-    color: activeSubtab === tab ? 'white' : '#999',
-    fontWeight: activeSubtab === tab ? '500' : '400',
-  });
+  const subtabs = [
+    { id: 'insights', label: 'Archetype' },
+    { id: 'ask', label: 'Ask Cipher' },
+    { id: 'forecast', label: 'Forecast' },
+    { id: 'anomalies', label: 'Anomalies' },
+  ];
 
   return (
-    <div style={{ paddingBottom: '80px' }}>
-      {/* subtab toggle */}
-      <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #E0E0E0' }}>
-        <div style={{ display: 'flex', background: '#F5F5F5', borderRadius: '10px', padding: '3px', gap: '3px' }}>
-          <button style={subtabStyle('insights')} onClick={() => setActiveSubtab('insights')}>Insights</button>
-          <button style={subtabStyle('ask')} onClick={() => setActiveSubtab('ask')}>Ask Cipher</button>
-          <button style={subtabStyle('forecast')} onClick={() => { setActiveSubtab('forecast'); fetchForecasts(); }}>Forecast</button>
-        </div>
+    <div className="content-inner">
+      <div className="page-header">
+        <h1 className="page-title">Insights</h1>
+        <p className="page-subtitle">Your spending psychology, decoded.</p>
       </div>
 
-      {activeSubtab === 'ask' && (
-        <div style={{ padding: '16px' }}>
-          <p style={{ fontSize: '12px', color: '#999', margin: '0 0 10px' }}>How much did I spend on</p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <select
-              value={category}
-              onChange={e => { setCategory(e.target.value); setSearchResult(null); }}
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '0.5px solid #E0E0E0', background: '#F5F5F5', fontSize: '13px', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
-            >
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <select
-              value={timePeriod}
-              onChange={e => { setTimePeriod(e.target.value); setSearchResult(null); }}
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '0.5px solid #E0E0E0', background: '#F5F5F5', fontSize: '13px', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
-            >
-              {TIME_PERIODS.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </div>
+      {/* subtab bar */}
+      <div className="subtab-bar">
+        {subtabs.map(t => (
           <button
-            onClick={searchResult ? clearSearch : handleSearch}
-            disabled={searchLoading}
-            style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', background: searchResult ? '#E0E0E0' : '#D4537E', color: searchResult ? '#666' : 'white', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit', marginBottom: '16px' }}
+            key={t.id}
+            className={`subtab-btn${activeSubtab === t.id ? ' active' : ''}`}
+            onClick={() => {
+              setActiveSubtab(t.id);
+              if (t.id === 'forecast' && forecasts.length === 0) fetchForecasts();
+              if (t.id === 'anomalies' && anomalies.length === 0) fetchAnomalies();
+            }}
           >
-            {searchLoading ? 'Searching...' : searchResult ? 'Clear' : 'Search'}
+            {t.label}
           </button>
+        ))}
+      </div>
 
-          {!searchResult && !searchLoading && (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <p style={{ fontSize: '28px', marginBottom: '8px' }}>💬</p>
-              <p style={{ fontSize: '13px', color: '#999' }}>Select a category and time period above</p>
-            </div>
-          )}
-
-          {searchLoading && (
-            <p style={{ textAlign: 'center', color: '#999', fontSize: '13px', padding: '40px 0' }}>Thinking...</p>
-          )}
-
-          {searchResult && (
-            <div>
-              <div style={{ background: '#FFF0F5', borderRadius: '12px', padding: '12px 14px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '12px', color: '#D4537E', fontWeight: '500', margin: '0 0 6px' }}>Cipher</p>
-                <p style={{ fontSize: '13px', color: '#1A1A1A', margin: 0, lineHeight: '1.5' }}>{searchResult.answer}</p>
-              </div>
-
-              {searchResult.transactions?.length > 0 && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#999', letterSpacing: '0.05em', margin: '0 0 8px' }}>MATCHING TRANSACTIONS</p>
-                  {searchResult.transactions.map((tx, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < searchResult.transactions.length - 1 ? '0.5px solid #E0E0E0' : 'none' }}>
-                      <div>
-                        <p style={{ fontSize: '13px', color: '#1A1A1A', margin: 0 }}>{tx.description}</p>
-                        <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>{tx.predicted_category} · {tx.date}</p>
-                      </div>
-                      <span style={{ fontSize: '13px', fontWeight: '500', color: '#D4537E' }}>-${tx.amount?.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
+      {/* ── archetype tab ── */}
       {activeSubtab === 'insights' && loading && (
-        <p style={{ textAlign: 'center', color: '#999', padding: '40px 0', fontSize: '13px' }}>Loading...</p>
+        <p style={{ color: '#999', fontSize: '13px' }}>Loading...</p>
       )}
 
       {activeSubtab === 'insights' && !loading && (!insights || txCount < UNLOCK_THRESHOLD) && (
-        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '60px 40px' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
-          <p style={{ fontSize: '16px', fontWeight: '500', color: '#1A1A1A', marginBottom: '8px' }}>Archetype locked</p>
-          <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.6', marginBottom: '24px' }}>
+          <p style={{ fontSize: '18px', fontWeight: '500', color: '#1A1A1A', marginBottom: '8px' }}>Archetype locked</p>
+          <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '28px', maxWidth: '360px', margin: '0 auto 28px' }}>
             Add {UNLOCK_THRESHOLD - txCount} more transactions to unlock your spending archetype and behavioural insights.
           </p>
-          <div style={{ background: '#F5F5F5', borderRadius: '100px', height: '8px', marginBottom: '8px', overflow: 'hidden' }}>
+          <div style={{ background: '#F5F5F5', borderRadius: '100px', height: '8px', maxWidth: '300px', margin: '0 auto 8px', overflow: 'hidden' }}>
             <div style={{ background: '#D4537E', height: '100%', width: `${Math.min(txCount / UNLOCK_THRESHOLD, 1) * 100}%`, borderRadius: '100px', transition: 'width 0.3s' }} />
           </div>
           <p style={{ fontSize: '12px', color: '#999' }}>{txCount} / {UNLOCK_THRESHOLD} transactions</p>
@@ -184,65 +121,171 @@ function InsightsTab({ user }) {
 
       {activeSubtab === 'insights' && !loading && insights && txCount >= UNLOCK_THRESHOLD && (
         <div>
-          <div style={{ padding: '16px', borderBottom: '0.5px solid #E0E0E0' }}>
-            <p style={{ fontSize: '11px', color: '#D4537E', letterSpacing: '0.1em', margin: '0 0 6px', fontWeight: '500' }}>YOUR SPENDING ARCHETYPE</p>
-            <p style={{ fontSize: '20px', fontWeight: '500', color: '#1A1A1A', margin: '0 0 8px' }}>{insights.archetype}</p>
-            <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.6', margin: 0 }}>{insights.portrait}</p>
+          <div className="archetype-card">
+            <p className="archetype-tag">YOUR SPENDING ARCHETYPE</p>
+            <p className="archetype-name">{insights.archetype}</p>
+            <p className="archetype-desc">{insights.portrait}</p>
           </div>
 
-          <div style={{ padding: '12px 16px', borderBottom: '0.5px solid #E0E0E0' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: '#1A1A1A', margin: '0 0 10px' }}>Key metrics</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
-              {insights.metrics?.map((m, i) => (
-                <div key={i} style={{ background: '#F5F5F5', borderRadius: '10px', padding: '10px' }}>
-                  <p style={{ fontSize: '11px', color: '#999', margin: '0 0 4px' }}>{m.label}</p>
-                  <p style={{ fontSize: '20px', fontWeight: '500', color: m.color, margin: 0 }}>{m.value}</p>
+          <div className="two-col">
+            {/* metrics */}
+            <div className="card">
+              <p className="card-title">Key metrics</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {insights.metrics?.map((m, i) => (
+                  <div key={i} style={{ background: '#F8F8F8', borderRadius: '10px', padding: '14px' }}>
+                    <p style={{ fontSize: '11px', color: '#999', margin: '0 0 6px' }}>{m.label}</p>
+                    <p style={{ fontSize: '22px', fontWeight: '600', color: m.color, margin: 0 }}>{m.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* insights */}
+            <div className="card">
+              <p className="card-title">Behavioural insights</p>
+              {insights.insights?.map((insight, i) => (
+                <div key={i} className="insight-row">
+                  <div className="insight-dot" style={{ background: insight.color }} />
+                  <p className="insight-text">
+                    <span style={{ fontWeight: '500', color: '#1A1A1A' }}>{insight.label}</span>
+                    {' — '}{insight.text}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
+        </div>
+      )}
 
-          <div style={{ padding: '12px 16px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: '#1A1A1A', margin: '0 0 10px' }}>Behavioural insights</p>
-            {insights.insights?.map((insight, i) => (
-              <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px 0', borderBottom: i < insights.insights.length - 1 ? '0.5px solid #E0E0E0' : 'none' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: insight.color, flexShrink: 0, marginTop: '4px' }} />
-                <p style={{ fontSize: '13px', color: '#444', margin: 0, lineHeight: '1.55' }}>
-                  <span style={{ fontWeight: '500', color: '#1A1A1A' }}>{insight.label}</span>
-                  {' — '}{insight.text}
-                </p>
+      {/* ── ask cipher tab ── */}
+      {activeSubtab === 'ask' && (
+        <div style={{ maxWidth: '560px' }}>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
+            Query your spending history by category and time period.
+          </p>
+          <div className="card">
+            <p className="card-title">How much did I spend on...</p>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+              <select className="input" value={category} onChange={e => { setCategory(e.target.value); setSearchResult(null); }}>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select className="input" value={timePeriod} onChange={e => { setTimePeriod(e.target.value); setSearchResult(null); }}>
+                {TIME_PERIODS.map(t => <option key={t}>{t}</option>)}
+              </select>
+              <button
+                onClick={searchResult ? () => setSearchResult(null) : handleSearch}
+                disabled={searchLoading}
+                style={{ padding: '11px 20px', borderRadius: '10px', border: 'none', background: searchResult ? '#E0E0E0' : '#D4537E', color: searchResult ? '#666' : 'white', fontSize: '13px', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >
+                {searchLoading ? '...' : searchResult ? 'Clear' : 'Search'}
+              </button>
+            </div>
+
+            {searchResult && (
+              <div>
+                <div style={{ background: '#FBEAF0', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '12px', color: '#D4537E', fontWeight: '500', margin: '0 0 4px' }}>Cipher</p>
+                  <p style={{ fontSize: '14px', color: '#1A1A1A', margin: 0, lineHeight: '1.5' }}>{searchResult.answer}</p>
+                </div>
+                {searchResult.transactions?.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: '11px', color: '#999', margin: '0 0 8px', letterSpacing: '0.05em' }}>MATCHING TRANSACTIONS</p>
+                    {searchResult.transactions.map((tx, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < searchResult.transactions.length - 1 ? '0.5px solid #F0F0F0' : 'none' }}>
+                        <div>
+                          <p style={{ fontSize: '13px', color: '#1A1A1A', margin: 0 }}>{tx.description}</p>
+                          <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>{tx.predicted_category} · {tx.date}</p>
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#D4537E' }}>-${tx.amount?.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
+            )}
+
+            {!searchResult && !searchLoading && (
+              <p style={{ fontSize: '13px', color: '#bbb', textAlign: 'center', padding: '16px 0' }}>Select a category and time period above.</p>
+            )}
           </div>
         </div>
       )}
 
+      {/* ── forecast tab ── */}
       {activeSubtab === 'forecast' && (
-        <div style={{ padding: '16px' }}>
-          {forecastLoading && (
-            <p style={{ textAlign: 'center', color: '#999', fontSize: '13px', padding: '40px 0' }}>Loading...</p>
-          )}
+        <div>
+          {forecastLoading && <p style={{ color: '#999', fontSize: '13px' }}>Loading...</p>}
           {!forecastLoading && forecasts.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <p style={{ fontSize: '28px', marginBottom: '8px' }}>📊</p>
-              <p style={{ fontSize: '13px', color: '#999' }}>Not enough data to forecast yet</p>
+            <div className="empty-state">
+              <div className="empty-state-icon">📊</div>
+              <div className="empty-state-title">Not enough data yet</div>
+              <div className="empty-state-desc">Add transactions from at least 2 months to see spending forecasts.</div>
             </div>
           )}
-          {!forecastLoading && forecasts.map((f, i) => (
-            <div key={i} style={{ padding: '12px 0', borderBottom: i < forecasts.length - 1 ? '0.5px solid #E0E0E0' : 'none' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <p style={{ fontSize: '13px', fontWeight: '500', color: '#1A1A1A', margin: 0 }}>{f.category}</p>
-                <p style={{ fontSize: '13px', color: '#D4537E', fontWeight: '500', margin: 0 }}>${f.predicted} predicted</p>
-              </div>
-              <div style={{ background: '#F5F5F5', borderRadius: '100px', height: '6px', overflow: 'hidden', marginBottom: '4px' }}>
-                <div style={{ background: '#D4537E', height: '100%', width: `${Math.min((f.current_spend / f.predicted) * 100, 100)}%`, borderRadius: '100px' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>${f.current_spend} spent so far</p>
-                <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>{f.current_spend > 0 ? `on track for $${f.projected}` : 'no spending yet'}</p>
+          {!forecastLoading && forecasts.length > 0 && (
+            <div className="two-col">
+              {forecasts.map((f, i) => (
+                <div key={i} className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <p style={{ fontSize: '14px', fontWeight: '500', color: '#1A1A1A', margin: 0 }}>{f.category}</p>
+                    <p style={{ fontSize: '14px', color: '#D4537E', fontWeight: '500', margin: 0 }}>${f.predicted} predicted</p>
+                  </div>
+                  <div className="forecast-bar-bg">
+                    <div className="forecast-bar-fill" style={{ width: `${Math.min((f.current_spend / (f.predicted || 1)) * 100, 100)}%` }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '12px', color: '#999' }}>${f.current_spend} spent so far</span>
+                    <span style={{ fontSize: '12px', color: '#999' }}>
+                      {f.current_spend > 0 ? `on track for $${f.projected}` : 'no spend yet'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── anomalies tab ── */}
+      {activeSubtab === 'anomalies' && (
+        <div style={{ maxWidth: '700px' }}>
+          {anomalyLoading && <p style={{ color: '#999', fontSize: '13px' }}>Scanning transactions...</p>}
+          {!anomalyLoading && anomalies.length === 0 && (
+            <div className="empty-state">
+              <div className="empty-state-icon">✅</div>
+              <div className="empty-state-title">No anomalies detected</div>
+              <div className="empty-state-desc">Your spending looks normal. We'll flag unusual charges or duplicates here.</div>
+            </div>
+          )}
+          {!anomalyLoading && anomalies.length > 0 && (
+            <div>
+              <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
+                {anomalies.length} flag{anomalies.length > 1 ? 's' : ''} found — review these transactions.
+              </p>
+              <div className="card" style={{ padding: '0' }}>
+                {anomalies.map((a, i) => (
+                  <div key={i} style={{ padding: '16px 24px', borderBottom: i < anomalies.length - 1 ? '0.5px solid #F0F0F0' : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span className={`anomaly-badge ${a.severity}`}>
+                            {a.severity === 'high' ? '⚠ High' : '! Medium'}
+                          </span>
+                          <span style={{ fontSize: '13px', fontWeight: '500', color: '#1A1A1A' }}>{a.description}</span>
+                        </div>
+                        <p style={{ fontSize: '13px', color: '#666', margin: '0 0 4px', lineHeight: '1.5' }}>{a.reason}</p>
+                        <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>{a.category} · {a.date}</p>
+                      </div>
+                      <span style={{ fontSize: '15px', fontWeight: '600', color: '#D4537E', marginLeft: '16px', flexShrink: 0 }}>
+                        -${a.amount?.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>

@@ -1,27 +1,14 @@
 import { useState, useEffect } from 'react';
 
 const CATEGORY_COLORS = {
-  Food: '#FF6B6B',
-  Groceries: '#FF9F43',
-  Transport: '#FFD93D',
-  Shopping: '#6BCB77',
-  Entertainment: '#4D96FF',
-  Health: '#9B5DE5',
-  Subscriptions: '#F15BB5',
-  Utilities: '#00BBF9',
-  Others: '#999999',
+  Food: '#FF6B6B', Groceries: '#FF9F43', Transport: '#FFD93D',
+  Shopping: '#6BCB77', Entertainment: '#4D96FF', Health: '#9B5DE5',
+  Subscriptions: '#F15BB5', Utilities: '#00BBF9', Others: '#999999',
 };
 
 const CATEGORY_ICONS = {
-  Food: '🍜',
-  Groceries: '🛒',
-  Transport: '🚌',
-  Shopping: '🛍️',
-  Entertainment: '🎮',
-  Health: '💊',
-  Subscriptions: '📱',
-  Utilities: '💡',
-  Others: '📦',
+  Food: '🍜', Groceries: '🛒', Transport: '🚌', Shopping: '🛍️',
+  Entertainment: '🎮', Health: '💊', Subscriptions: '📱', Utilities: '💡', Others: '📦',
 };
 
 function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
@@ -29,13 +16,12 @@ function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
   const [loading, setLoading] = useState(true);
   const [expandedTx, setExpandedTx] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
+  const [filterCat, setFilterCat] = useState('All');
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [currentMonth]);
+  useEffect(() => { fetchTransactions(); }, [currentMonth]);
 
   async function fetchTransactions() {
     setLoading(true);
@@ -46,11 +32,8 @@ function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
       });
       const data = await res.json();
       setTransactions(data.transactions || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   }
 
   async function handleDelete(txId) {
@@ -63,90 +46,139 @@ function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
       setExpandedTx(null);
       fetchTransactions();
       if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   }
 
   const totalSpent = transactions.reduce((sum, tx) => sum + tx.amount, 0);
   const monthName = currentMonth.toLocaleDateString('en-SG', { month: 'long', year: 'numeric' });
 
+  const filtered = filterCat === 'All'
+    ? transactions
+    : transactions.filter(tx => (tx.predicted_category || tx.category) === filterCat);
+
   const grouped = {};
-  transactions.forEach(tx => {
+  filtered.forEach(tx => {
     if (!grouped[tx.date]) grouped[tx.date] = [];
     grouped[tx.date].push(tx);
   });
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
-  function formatDateHeader(dateStr) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-SG', { day: 'numeric', month: 'short' }).toUpperCase();
-  }
+  // category summary for top bar
+  const catTotals = {};
+  transactions.forEach(tx => {
+    const cat = tx.predicted_category || tx.category || 'Others';
+    catTotals[cat] = (catTotals[cat] || 0) + tx.amount;
+  });
+  const topCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
   return (
-    <div style={{ paddingBottom: '80px' }}>
-      <div style={{ padding: '16px', borderBottom: '0.5px solid #E0E0E0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="content-inner">
+      {/* header */}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <button onClick={() => onMonthChange(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '18px', cursor: 'pointer', padding: '0' }}>‹</button>
-            <span style={{ fontSize: '13px', color: '#666' }}>{monthName}</span>
-            <button onClick={() => onMonthChange(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '18px', cursor: 'pointer', padding: '0' }}>›</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+            <button onClick={() => onMonthChange(new Date(year, month - 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '20px', cursor: 'pointer', lineHeight: 1 }}>‹</button>
+            <h1 className="page-title" style={{ margin: 0 }}>{monthName}</h1>
+            <button onClick={() => onMonthChange(new Date(year, month + 1, 1))} style={{ background: 'none', border: 'none', color: '#D4537E', fontSize: '20px', cursor: 'pointer', lineHeight: 1 }}>›</button>
           </div>
-          <span style={{ fontSize: '22px', fontWeight: '500', color: '#1A1A1A' }}>${totalSpent.toFixed(2)}</span>
+          <p className="page-subtitle">${totalSpent.toFixed(2)} total · {transactions.length} transactions</p>
         </div>
       </div>
 
-      {loading && (
-        <p style={{ textAlign: 'center', color: '#999', padding: '40px 0', fontSize: '13px' }}>Loading...</p>
-      )}
-
-      {!loading && transactions.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 24px' }}>
-          <p style={{ fontSize: '32px', marginBottom: '8px' }}>📭</p>
-          <p style={{ fontSize: '14px', fontWeight: '500', color: '#1A1A1A', marginBottom: '4px' }}>No transactions yet</p>
-          <p style={{ fontSize: '13px', color: '#999' }}>Tap + to add one or import your bank statement</p>
+      {/* stat strip */}
+      {topCats.length > 0 && (
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+          {topCats.map(([cat, amount]) => (
+            <div key={cat} className="card" style={{ flex: 1, padding: '14px 16px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: CATEGORY_COLORS[cat] || '#999', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1A1A1A' }}>${amount.toFixed(0)}</div>
+                <div style={{ fontSize: '11px', color: '#999' }}>{cat}</div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {!loading && transactions.length > 0 && (
-        <div style={{ padding: '12px 16px' }}>
-          {sortedDates.map(date => (
-            <div key={date} style={{ marginBottom: '16px' }}>
-              <p style={{ fontSize: '11px', color: '#999', letterSpacing: '0.05em', margin: '0 0 8px' }}>{formatDateHeader(date)}</p>
+      {/* filter bar */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {['All', 'Food', 'Groceries', 'Transport', 'Shopping', 'Entertainment', 'Health', 'Subscriptions', 'Utilities', 'Others'].map(cat => (
+          <button
+            key={cat}
+            onClick={() => setFilterCat(cat)}
+            style={{
+              padding: '5px 12px', borderRadius: '20px', border: '0.5px solid',
+              borderColor: filterCat === cat ? '#D4537E' : '#E0E0E0',
+              background: filterCat === cat ? '#FBEAF0' : 'white',
+              color: filterCat === cat ? '#D4537E' : '#666',
+              fontSize: '12px', cursor: 'pointer', fontFamily: 'inherit',
+              transition: 'all 0.1s',
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* transaction list */}
+      <div className="card" style={{ padding: '0' }}>
+        {loading && (
+          <p style={{ textAlign: 'center', color: '#999', padding: '40px', fontSize: '13px' }}>Loading...</p>
+        )}
+
+        {!loading && filtered.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon">📭</div>
+            <div className="empty-state-title">No transactions</div>
+            <div className="empty-state-desc">
+              {filterCat !== 'All' ? `No ${filterCat} transactions this month.` : 'Add one or import your bank statement.'}
+            </div>
+          </div>
+        )}
+
+        {!loading && sortedDates.map((date, di) => (
+          <div key={date}>
+            <div style={{ padding: '10px 24px', background: '#FAFAFA', borderBottom: '0.5px solid #F0F0F0', borderTop: di > 0 ? '0.5px solid #F0F0F0' : 'none' }}>
+              <span style={{ fontSize: '11px', color: '#999', letterSpacing: '0.05em', fontWeight: '500' }}>
+                {new Date(date).toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase()}
+              </span>
+            </div>
+            <div style={{ padding: '0 24px' }}>
               {grouped[date].map((tx, i) => {
                 const cat = tx.predicted_category || tx.category || 'Others';
-                const color = CATEGORY_COLORS[cat] || '#999';
                 const isExpanded = expandedTx === tx.id;
-
                 return (
-                  <div key={i}>
+                  <div key={tx.id || i}>
                     <div
+                      className="tx-row"
                       onClick={() => setExpandedTx(isExpanded ? null : tx.id)}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: !isExpanded && i < grouped[date].length - 1 ? '0.5px solid #E0E0E0' : 'none', cursor: 'pointer' }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: color + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="tx-icon" style={{ background: (CATEGORY_COLORS[cat] || '#999') + '20' }}>
                           {CATEGORY_ICONS[cat] || '📦'}
                         </div>
                         <div>
-                          <p style={{ fontSize: '13px', color: '#1A1A1A', margin: 0 }}>{tx.description}</p>
-                          <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>{cat}{tx.time ? ` · ${tx.time}` : ''}</p>
+                          <p className="tx-desc">{tx.description}</p>
+                          <p className="tx-cat">{cat}{tx.time ? ` · ${tx.time}` : ''}</p>
                         </div>
                       </div>
-                      <span style={{ fontSize: '13px', fontWeight: '500', color: '#D4537E' }}>-${tx.amount.toFixed(2)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span className="tx-amount">-${tx.amount.toFixed(2)}</span>
+                        <span style={{ color: '#ccc', fontSize: '12px' }}>{isExpanded ? '▲' : '▼'}</span>
+                      </div>
                     </div>
 
                     {isExpanded && (
-                      <div style={{ display: 'flex', gap: '8px', padding: '8px 0 12px', borderBottom: i < grouped[date].length - 1 ? '0.5px solid #E0E0E0' : 'none' }}>
+                      <div style={{ display: 'flex', gap: '8px', padding: '8px 0 12px' }}>
                         <button
                           onClick={() => setEditingTx(tx)}
-                          style={{ flex: 1, padding: '8px', background: '#F5F5F5', border: 'none', borderRadius: '8px', fontSize: '13px', color: '#1A1A1A', cursor: 'pointer', fontFamily: 'inherit' }}
+                          style={{ padding: '7px 16px', background: '#F5F5F5', border: 'none', borderRadius: '8px', fontSize: '13px', color: '#1A1A1A', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           ✏️ Edit
                         </button>
                         <button
                           onClick={() => handleDelete(tx.id)}
-                          style={{ flex: 1, padding: '8px', background: '#FBEAF0', border: 'none', borderRadius: '8px', fontSize: '13px', color: '#D4537E', cursor: 'pointer', fontFamily: 'inherit' }}
+                          style={{ padding: '7px 16px', background: '#FBEAF0', border: 'none', borderRadius: '8px', fontSize: '13px', color: '#D4537E', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                           🗑️ Delete
                         </button>
@@ -156,29 +188,15 @@ function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
                 );
               })}
             </div>
-          ))}
-
-          <div style={{ background: '#F5F5F5', borderRadius: '10px', padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-            {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
-              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }} />
-                <span style={{ fontSize: '11px', color: '#666' }}>{cat}</span>
-              </div>
-            ))}
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       {editingTx && (
         <EditModal
           tx={editingTx}
           onClose={() => setEditingTx(null)}
-          onSaved={() => {
-            setEditingTx(null);
-            setExpandedTx(null);
-            fetchTransactions();
-            if (onRefresh) onRefresh();
-          }}
+          onSaved={() => { setEditingTx(null); setExpandedTx(null); fetchTransactions(); if (onRefresh) onRefresh(); }}
         />
       )}
     </div>
@@ -198,36 +216,20 @@ function EditModal({ tx, onClose, onSaved }) {
       const token = localStorage.getItem('cipher_token');
       await fetch(`http://localhost:8000/transactions/${tx.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ description, amount: parseFloat(amount), category, date})
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ description, amount: parseFloat(amount), category, date })
       });
       onSaved();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   }
 
   return (
-    <div style={{
-      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'flex-end',
-      zIndex: 100,
-    }} onClick={onClose}>
-      <div style={{
-        background: '#FDFAF6',
-        borderRadius: '20px 20px 0 0',
-        padding: '24px',
-        width: '100%',
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#1A1A1A', margin: 0 }}>Edit transaction</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#999' }}>×</button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">Edit transaction</span>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="form-group">
           <input className="input" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} />
@@ -236,18 +238,12 @@ function EditModal({ tx, onClose, onSaved }) {
             <input className="input" type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <select className="input" value={category} onChange={e => setCategory(e.target.value)}>
-            <option>Food</option>
-            <option>Transport</option>
-            <option>Shopping</option>
-            <option>Groceries</option>
-            <option>Entertainment</option>
-            <option>Health</option>
-            <option>Subscriptions</option>
-            <option>Utilities</option>
-            <option>Others</option>
+            <option>Food</option><option>Transport</option><option>Shopping</option>
+            <option>Groceries</option><option>Entertainment</option><option>Health</option>
+            <option>Subscriptions</option><option>Utilities</option><option>Others</option>
           </select>
         </div>
-        <button className="btn-pink" style={{ width: '100%', marginTop: '8px' }} onClick={handleSave} disabled={loading}>
+        <button className="btn-pink" onClick={handleSave} disabled={loading}>
           {loading ? 'Saving...' : 'Save changes'}
         </button>
       </div>

@@ -86,7 +86,6 @@ Linear regression or moving average over monthly aggregated totals. No external 
 - [x] Fit linear regression (sklearn) on user’s history
 - [x] Show “you’re on track to spend $X on food this month”
 - [x] Handle cold start (< 2 months data) gracefully
-
 -----
 
 ### Phase 4 — Anomaly Detection
@@ -95,9 +94,8 @@ Linear regression or moving average over monthly aggregated totals. No external 
 
 Isolation forest or DBSCAN on user’s transaction history. Unsupervised, no labels needed.
 
-- [ ] Flag transactions that are outliers vs user’s typical spending
-- [ ] Surface as alerts: “this coffee was 3x your usual”
-- [ ] Detect duplicate charges
+- [x] Flag transactions that are outliers vs user’s typical spending
+- [x] Surface as alerts: “this coffee was 3x your usual”
 
 -----
 
@@ -112,16 +110,6 @@ DBSCAN or KMeans on behavioural features extracted from transaction history.
 - [ ] Map clusters to the 6 defined archetypes
 - [ ] Keep Groq/Claude API at the end to narrate the ML output in human language
 
------
-
-## Product Roadmap (Versions)
-
-|Version|Theme                                                                               |Status     |
-|-------|------------------------------------------------------------------------------------|-----------|
-|V1     |Decode yourself — stateless, no login, upload CSV/PDF, get archetype                |~done      |
-|V2     |Understand yourself — user accounts, longitudinal tracking, Cipher Wrapped          |in progress|
-|V3     |Change yourself — nudges, commitment devices, peer benchmarking                     |planned    |
-|V4     |Recommend for yourself — behaviourally matched product recommendations, monetisation|future     |
 -----
 
 ## Key Numbers

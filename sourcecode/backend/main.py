@@ -15,6 +15,7 @@ from database import get_db, SessionLocal
 from sqlalchemy import text
 import uuid
 from forecast import forecast_next_month
+from anomaly import detect_anomalies
 
 app = FastAPI() # creates FastAPI server 
 load_dotenv() # loads .env file 
@@ -25,10 +26,16 @@ localhost:8000/analyse → runs analyse()
 localhost:8000/parse-pdf → runs parse_pdf()
 """
 
+# CORS: allow local dev + production Vercel frontend
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    os.getenv("FRONTEND_URL", ""),
+]
+
 # ── allow React (localhost:3000) to talk to FastAPI (localhost:8000) ──
 app.add_middleware(
     CORSMiddleware,  
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[o for o in ALLOWED_ORIGINS if o],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -53,6 +60,9 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str
 
 # ── helper to get current user from token ──
 # every endpoint calls this 
@@ -368,6 +378,23 @@ def login(request: LoginRequest):
     finally:
         db.close()
 
+# ── change password endpoint ──
+@app.post("/change-password")
+def change_password(request: ChangePasswordRequest, user_id: str = Depends(get_current_user)):
+    if len(request.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    db = SessionLocal()
+    try:
+        new_hash = hash_password(request.new_password)
+        db.execute(
+            text("UPDATE users SET password_hash = :hash WHERE id = :id"),
+            {"hash": new_hash, "id": user_id}
+        )
+        db.commit()
+        return {"success": True}
+    finally:
+        db.close()
+
 # ── transaction endpoints ──
 @app.post("/transactions")
 def add_transaction(request: dict, user_id: str = Depends(get_current_user)):
@@ -664,5 +691,23 @@ def get_forecast(user_id: str = Depends(get_current_user)):
                 forecasts.append({"category": cat, **result})
         
         return {"forecasts": forecasts} # convention for APIs, makes response extensible 
+    finally:
+        db.close()
+
+@app.get("/anomalies")
+def get_anomalies(user_id: str = Depends(get_current_user)):
+    db = SessionLocal()
+    try:
+        rows = db.execute(text("""
+            SELECT * FROM transactions
+            WHERE user_id = :user_id
+        """), {"user_id": user_id}).fetchall()
+        transactions = [dict(row._mapping) for row in rows]
+
+        if len(transactions) < 10:
+            return {"anomalies": [], "message": "Not enough transactions to detect anomalies yet (need at least 10)."}
+        
+        anomalies = detect_anomalies(transactions)
+        return {"anomalies": anomalies}
     finally:
         db.close()
