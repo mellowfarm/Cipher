@@ -26,7 +26,7 @@ function InsightsTab({ user }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch('http://localhost:8000/insights', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/insights`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       setTxCount(data.transaction_count || 0);
       if (data.unlocked) setInsights(data);
@@ -38,7 +38,7 @@ function InsightsTab({ user }) {
     setForecastLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch('http://localhost:8000/forecast', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/forecast`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       setForecasts(data.forecasts || []);
     } catch (err) { console.error(err); }
@@ -49,7 +49,7 @@ function InsightsTab({ user }) {
     setAnomalyLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch('http://localhost:8000/anomalies', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/anomalies`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       setAnomalies(data.anomalies || []);
     } catch (err) { console.error(err); }
@@ -61,7 +61,7 @@ function InsightsTab({ user }) {
     setSearchResult(null);
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch(`http://localhost:8000/search?category=${encodeURIComponent(category)}&period=${encodeURIComponent(timePeriod)}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/search?category=${encodeURIComponent(category)}&period=${encodeURIComponent(timePeriod)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setSearchResult(await res.json());

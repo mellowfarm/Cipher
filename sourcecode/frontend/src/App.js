@@ -11,7 +11,7 @@ function App() {
   });
 
   useEffect(() => {
-    fetch('http://localhost:8000/health').catch(() => {});
+    fetch(`${process.env.REACT_APP_API_URL}/health`).catch(() => {});
   }, []);
 
   function handleLogin(data) {

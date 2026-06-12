@@ -4,12 +4,12 @@
 
 |Layer     |Tech                                                |
 |----------|----------------------------------------------------|
-|Frontend  |React (PWA, mobile-first)                           |
+|Frontend  |React (desktop webapp)                              |
 |Backend   |FastAPI (Python)                                    |
 |Database  |PostgreSQL (Neon)                                   |
 |Auth      |Neon Auth (Stack Auth under the hood)               |
 |ML        |scikit-learn, sentence-transformers, FAISS (planned)|
-|LLM       |Groq API (archetypes), Claude API (portraits)       |
+|LLM       |OpenAI API (portrait generation)                    |
 |Deployment|Vercel (frontend) + Railway (FastAPI)               |
 
 -----
@@ -29,7 +29,7 @@
 ### ML / Features
 
 - [x] Transaction categorisation — TF-IDF + logistic regression (working, current baseline)
-- [x] Spending archetype generation — Groq API call (rule-based, not real ML)
+- [x] Spending archetype generation — rule-based scoring on behavioural features
 - [x] Basic insights section (exists, details TBC)
 
 ### Product
@@ -99,7 +99,7 @@ Isolation forest or DBSCAN on user’s transaction history. Unsupervised, no lab
 
 -----
 
-### Phase 5 — Real Archetype Clustering (replace Groq API)
+### Phase 5 — Real Archetype Clustering (replace rule-based scoring)
 
 **Replace rule-based archetypes with actual ML clustering**
 
@@ -108,7 +108,7 @@ DBSCAN or KMeans on behavioural features extracted from transaction history.
 - [ ] Feature engineering: late-night spend %, impulse purchase flags, category ratios, spend variance
 - [ ] Cluster users into archetypes using DBSCAN
 - [ ] Map clusters to the 6 defined archetypes
-- [ ] Keep Groq/Claude API at the end to narrate the ML output in human language
+- [ ] Keep OpenAI API at the end to narrate the ML output in human language
 
 -----
 

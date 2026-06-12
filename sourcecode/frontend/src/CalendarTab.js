@@ -20,7 +20,7 @@ function CalendarTab({ user, currentMonth, onMonthChange }) {
   async function fetchTransactions() {
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch(`http://localhost:8000/transactions?month=${month + 1}&year=${year}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/transactions?month=${month + 1}&year=${year}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -66,7 +66,7 @@ function CalendarTab({ user, currentMonth, onMonthChange }) {
       if (file.name.endsWith('.pdf')) {
         const formData = new FormData();
         formData.append('file', file);
-        const parseRes = await fetch('http://localhost:8000/parse-pdf', {
+        const parseRes = await fetch(`${process.env.REACT_APP_API_URL}/parse-pdf`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
@@ -77,7 +77,7 @@ function CalendarTab({ user, currentMonth, onMonthChange }) {
           setTimeout(() => setImportStatus(null), 3000);
           return;
         }
-        await fetch('http://localhost:8000/transactions/bulk', {
+        await fetch(`${process.env.REACT_APP_API_URL}/transactions/bulk`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ transactions: parseData.transactions })

@@ -156,7 +156,7 @@ function AddModal({ onClose, onAdded }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      await fetch('http://localhost:8000/transactions', {
+      await fetch(`${process.env.REACT_APP_API_URL}/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ description, amount: parseFloat(amount), category, date })

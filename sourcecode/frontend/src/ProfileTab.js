@@ -184,7 +184,7 @@ function ChangePasswordModal({ user, onClose }) {
     setLoading(true);
     try {
       // re-authenticate with current password to verify
-      const loginRes = await fetch('http://localhost:8000/login', {
+      const loginRes = await fetch(`${process.env.REACT_APP_API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user.email, password: current })
@@ -192,7 +192,7 @@ function ChangePasswordModal({ user, onClose }) {
       if (!loginRes.ok) { setError('Current password is incorrect.'); setLoading(false); return; }
 
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch('http://localhost:8000/change-password', {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ new_password: next })

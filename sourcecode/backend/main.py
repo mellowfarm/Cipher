@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Header
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
-from groq import Groq
+from openai import OpenAI
 import pdfplumber
 from dotenv import load_dotenv
 import os
@@ -137,7 +137,7 @@ def analyse(request: AnalyseRequest):
     }
 
 def generate_portrait(archetype_name: str, features: dict) -> str:
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     prompt = f"""You are Cipher, a behavioural finance app.
                 The user's spending archetype is: {archetype_name}
 
@@ -158,7 +158,7 @@ def generate_portrait(archetype_name: str, features: dict) -> str:
                 - Ground observations in real behavioural science concepts (present bias, loss aversion, etc.)"""
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=200
     )

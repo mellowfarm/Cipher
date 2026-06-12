@@ -27,7 +27,7 @@ function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      const res = await fetch(`http://localhost:8000/transactions?month=${month + 1}&year=${year}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/transactions?month=${month + 1}&year=${year}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -39,7 +39,7 @@ function TransactionsTab({ user, onRefresh, currentMonth, onMonthChange }) {
   async function handleDelete(txId) {
     try {
       const token = localStorage.getItem('cipher_token');
-      await fetch(`http://localhost:8000/transactions/${txId}`, {
+      await fetch(`${process.env.REACT_APP_API_URL}/transactions/${txId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -214,7 +214,7 @@ function EditModal({ tx, onClose, onSaved }) {
     setLoading(true);
     try {
       const token = localStorage.getItem('cipher_token');
-      await fetch(`http://localhost:8000/transactions/${tx.id}`, {
+      await fetch(`${process.env.REACT_APP_API_URL}/transactions/${tx.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ description, amount: parseFloat(amount), category, date })
